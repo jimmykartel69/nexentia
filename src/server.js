@@ -33,5 +33,4 @@ app.use("/billing", billingRouter);
 // ✅ webhook AVANT json
 app.use("/webhooks", express.raw({ type: "application/json" }), stripeWebhookRouter);
 
-const port = process.env.PORT || 8080;
-app.listen(port, () => console.log(`NEXENTIA API listening on http://localhost:${port}`));
+export default app;

@@ -2,7 +2,8 @@
   "name": "nexentia-saas-api",
   "type": "module",
   "scripts": {
-    "dev": "node src/server.js",
+    "dev": "node src/local-server.js",
+    "start": "node src/local-server.js",
     "prisma:gen": "prisma generate",
     "prisma:migrate": "prisma migrate dev --name init",
     "prisma:studio": "prisma studio"
@@ -19,6 +20,7 @@
     "zod": "^3.23.8"
   },
   "devDependencies": {
+    "@vercel/node": "^3.2.8",
     "prisma": "^5.19.1"
   }
 }
