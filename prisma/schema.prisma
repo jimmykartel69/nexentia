@@ -1,0 +1,194 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum CompanyType {
+  MICRO
+  SASU
+  SAS
+  SARL
+}
+
+enum VatMode {
+  FRANCHISE
+  REEL
+}
+
+enum Role {
+  OWNER
+  ADMIN
+  FINANCE
+  SALES
+  ACCOUNTANT
+  VIEWER
+}
+
+enum InvoiceStatus {
+  DRAFT
+  SENT
+  UNPAID
+  PAID
+}
+
+enum Plan {
+  CLASSIC
+  PRO
+  ENTERPRISE
+}
+
+model Organization {
+  id            String        @id @default(cuid())
+  name          String
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  memberships   Membership[]
+  companies     Company[]
+  customers     Customer[]
+  invoices      Invoice[]
+  auditLogs     AuditLog[]
+  subscription  Subscription?
+}
+
+model User {
+  id            String         @id @default(cuid())
+  email         String         @unique
+  passwordHash  String
+  fullName      String?
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  memberships   Membership[]
+  refreshTokens RefreshToken[]
+}
+
+model Membership {
+  id             String        @id @default(cuid())
+  organizationId String
+  userId         String
+  role           Role          @default(OWNER)
+  createdAt      DateTime      @default(now())
+
+  organization   Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user           User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, userId])
+  @@index([userId])
+  @@index([organizationId])
+}
+
+model Company {
+  id             String        @id @default(cuid())
+  organizationId String
+  name           String
+  companyType    CompanyType   @default(SASU)
+  vatMode        VatMode       @default(REEL)
+  siret          String?
+  vatNumber      String?
+  address        String?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  organization   Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+}
+
+model Customer {
+  id             String        @id @default(cuid())
+  organizationId String
+  name           String
+  email          String?
+  phone          String?
+  tags           String[]      @default([])
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  organization   Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  invoices       Invoice[]
+
+  @@index([organizationId])
+  @@index([name])
+}
+
+model Invoice {
+  id             String        @id @default(cuid())
+  organizationId String
+  companyId      String?
+  customerId     String
+  number         String
+  date           DateTime
+  dueDate        DateTime?
+  totalCents     Int
+  currency       String        @default("EUR")
+  status         InvoiceStatus @default(SENT)
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  organization   Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  customer       Customer      @relation(fields: [customerId], references: [id], onDelete: Restrict)
+
+  @@index([organizationId])
+  @@index([customerId])
+  @@unique([organizationId, number])
+}
+
+model Subscription {
+  id                  String   @id @default(cuid())
+  organizationId       String   @unique
+
+  plan                Plan     @default(CLASSIC)
+  status              String   @default("trialing")
+  currentPeriodStart  DateTime @default(now())
+  currentPeriodEnd    DateTime @default(now())
+
+  // Stripe IDs
+  stripeCustomerId      String?
+  stripeSubscriptionId  String?
+  stripePriceId         String?
+  stripeProductId       String?
+
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  organization         Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([stripeCustomerId])
+  @@index([stripeSubscriptionId])
+}
+
+model AuditLog {
+  id             String        @id @default(cuid())
+  organizationId String
+  userId         String?
+  action         String
+  entityType     String?
+  entityId       String?
+  ip             String?
+  userAgent      String?
+  before         Json?
+  after          Json?
+  createdAt      DateTime      @default(now())
+
+  organization   Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, createdAt])
+}
+
+model RefreshToken {
+  id            String     @id @default(cuid())
+  userId        String
+  tokenHash     String
+  revokedAt     DateTime?
+  createdAt     DateTime   @default(now())
+  expiresAt     DateTime
+
+  user          User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
